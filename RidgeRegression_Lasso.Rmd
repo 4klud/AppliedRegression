@@ -1,0 +1,93 @@
+---
+title: "Ridge Regression & Lasso"
+author: "Claudius Taylor"
+date: "7/1/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r results='asis', echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library(data.table)
+library(dplyr)
+library(stats)
+library(glmnet)
+```
+
+## Predict the number of applications received using the other variables in the College data set.
+
+```{r}
+data("College", package = "ISLR")
+x = model.matrix(Apps~., College)[,-1]
+y = College$Apps
+```
+
+```{r}
+grid = 10^seq(10, -2, length = 100)
+ridge.mod = glmnet(x, y, alpha = 0, lambda = grid)
+```
+
+## (a) Split the data into a training and a test set
+
+```{r}
+set.seed(10)
+train = sample(1:nrow(x), nrow(x)/2)
+test = (-train)
+y.test = y[test]
+```
+
+## (b) Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
+
+```{r}
+set.seed(11)
+cross.val.output = cv.glmnet(x[train, ], y[train], alpha = 0)
+plot(cross.val.output)
+bestlamda = cross.val.output$lambda.min
+bestlamda
+```
+
+## test error obtained for ridge
+
+```{r}
+ridge.pred = predict(ridge.mod, s = bestlamda, newx = x[test, ])
+mean((ridge.pred - y.test)^2)
+```
+
+## Refit the ridge model obtained on the full data set, using the value of the $\lambda$ chosen by cross-validation and examine the coefficient estimates
+
+```{r}
+out = glmnet(x,y, alpha = 0)
+predict(out, type = 'coefficient', s = bestlamda)[1:18,]
+```
+
+## (c) Fit a lasso model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
+
+```{r}
+lasso.mod = glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+cv.out.l = cv.glmnet(x[train, ], y[train], alpha = 1)
+plot(cv.out.l)
+bestlamda = cv.out.l$lambda.min
+```
+
+## test error obtained for lasso
+
+```{r}
+lasso.pred = predict(lasso.mod, s = bestlamda, newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+```
+
+## Refit the lasso model obtained on the full data set, using the value of the $\lambda$ chosen by cross-validation and observe the number of no-zero coefficient estimates
+
+```{r}
+out = glmnet(x,y, alpha = 1, lambda = grid)
+predict(out, type = 'coefficient', s = bestlamda)[1:18,]
+
+```
+
+# Conclusion: 
+# The Lasso has a slight advantage over the Ridge regression in that the resulting coefficient are somewhat sparse. Here we see that 2 of the 17 coefficient estimates are exactly zero. So the Lasso model with $\lambda$ chosen by the cross-validation contains only 15 variables.
+
+
